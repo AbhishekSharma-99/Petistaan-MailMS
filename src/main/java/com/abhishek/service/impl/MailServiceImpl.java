@@ -1,5 +1,6 @@
 package com.abhishek.service.impl;
 
+import com.abhishek.config.MailConfig;
 import com.abhishek.dto.MailDTO;
 import com.abhishek.enums.MailType;
 import com.abhishek.service.MailService;
@@ -8,6 +9,7 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+@RefreshScope
 @Slf4j
 @RequiredArgsConstructor
 @Service
@@ -25,8 +28,7 @@ public class MailServiceImpl implements MailService {
 
     private final JavaMailSender mailSender;
     private final Configuration templateConfig;
-    @Value("${spring.mail.username}")
-    private String senderEmail;
+    private final MailConfig mailConfig;
     @Value("${success.message}")
     private String successMessage;
     @Value("${failure.message}")
@@ -38,11 +40,11 @@ public class MailServiceImpl implements MailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(message,
                     true);
-            mimeMessageHelper.setFrom(senderEmail);
+            mimeMessageHelper.setFrom(mailConfig.getUsername());
             mimeMessageHelper.setTo(mailDTO.to());
             mimeMessageHelper.setSubject(mailDTO.category().getSubject());
             mimeMessageHelper.setText(buildMailBodyWithTemplate(mailDTO.category(),
-                            mailDTO.firstName().concat(" ").concat(mailDTO.lastName())),
+                    mailDTO.firstName().concat(" ").concat(mailDTO.lastName())),
                     true);
             mailSender.send(message);
             return String.format(successMessage,
@@ -60,7 +62,7 @@ public class MailServiceImpl implements MailService {
         Map<String, String> dataModel = new HashMap<>();
         dataModel.put("ownerName",
                 ownerName);
-        try(Writer writer = new StringWriter()) {
+        try (Writer writer = new StringWriter()) {
             templateConfig.getTemplate(category.getTemplateFileName())
                     .process(dataModel,
                             writer);
